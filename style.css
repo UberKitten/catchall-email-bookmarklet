@@ -190,7 +190,7 @@ input[type="text"]:focus {
 .preview-label {
   font-size: 0.8rem;
   color: var(--text-dim);
-  margin: 1.25rem 0 0.4rem;
+  margin: 0.4rem 0;
 }
 
 .preview {

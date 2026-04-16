@@ -17,6 +17,7 @@
   const outRel = $('out-rel');
   const decodeStatus = $('decode-status');
   const pslMeta = $('psl-meta');
+  const pslPayload = $('psl-payload');
 
   let pslRules = null;
   let pslCompressedB64 = null;
@@ -64,7 +65,8 @@
     pslRules = parsePsl(text);
     const minified = pslRules.join('\n');
     pslCompressedB64 = await gzipToBase64(minified);
-    pslMeta.textContent = `PSL: ${pslRules.length.toLocaleString()} rules, fetched ${formatDate(fetchedAt)}${fromCache ? ' (cache)' : ''}. Bookmarklet payload: ${formatBytes(pslCompressedB64.length)} (gzip+base64).`;
+    pslMeta.textContent = `PSL: ${pslRules.length.toLocaleString()} rules, fetched ${formatDate(fetchedAt)}${fromCache ? ' (cache)' : ''}.`;
+    pslPayload.textContent = `Bookmarklet payload: ${formatBytes(pslCompressedB64.length)} (gzip+base64).`;
     refresh();
   }
 
