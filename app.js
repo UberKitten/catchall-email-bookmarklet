@@ -18,15 +18,15 @@
   const decodeStatus = $('decode-status');
   const pslMeta = $('psl-meta');
 
-  let pslText = null;
   let pslRules = null;
+  let pslCompressedB64 = null;
 
   // ---- PSL fetch + parse ------------------------------------------------
 
   async function loadPsl() {
     const cached = readPslCache();
     if (cached && Date.now() - cached.fetchedAt < PSL_TTL_MS) {
-      setPsl(cached.text, cached.fetchedAt, true);
+      await setPsl(cached.text, cached.fetchedAt, true);
       return;
     }
     try {
@@ -37,10 +37,10 @@
       try {
         localStorage.setItem(PSL_CACHE_KEY, JSON.stringify({ text, fetchedAt }));
       } catch {}
-      setPsl(text, fetchedAt, false);
+      await setPsl(text, fetchedAt, false);
     } catch (err) {
       if (cached) {
-        setPsl(cached.text, cached.fetchedAt, true);
+        await setPsl(cached.text, cached.fetchedAt, true);
         pslMeta.textContent = `PSL loaded from stale cache (${formatDate(cached.fetchedAt)}); jsDelivr unreachable.`;
       } else {
         pslMeta.textContent = 'failed to load PSL: ' + err.message;
@@ -60,10 +60,11 @@
     }
   }
 
-  function setPsl(text, fetchedAt, fromCache) {
-    pslText = text;
+  async function setPsl(text, fetchedAt, fromCache) {
     pslRules = parsePsl(text);
-    pslMeta.textContent = `PSL: ${pslRules.length.toLocaleString()} rules, fetched ${formatDate(fetchedAt)}${fromCache ? ' (cache)' : ''}.`;
+    const minified = pslRules.join('\n');
+    pslCompressedB64 = await gzipToBase64(minified);
+    pslMeta.textContent = `PSL: ${pslRules.length.toLocaleString()} rules, fetched ${formatDate(fetchedAt)}${fromCache ? ' (cache)' : ''}. Bookmarklet payload: ${formatBytes(pslCompressedB64.length)} (gzip+base64).`;
     refresh();
   }
 
@@ -75,6 +76,18 @@
       out.push(trimmed.split(/\s/)[0]);
     }
     return out;
+  }
+
+  async function gzipToBase64(text) {
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+    const buf = await new Response(stream).arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
   }
 
   function registrable(hostname, rules) {
@@ -100,22 +113,24 @@
 
   // ---- Bookmarklet build ------------------------------------------------
 
-  // This runs in the target page. Keep it small.
-  // Placeholders __PSL__ and __DOMAIN__ are replaced with JSON-encoded values.
+  // Runs in the target page. Payload is the PSL, minified (one rule per line,
+  // no comments), gzip-compressed, then base64-encoded. Decompressed on click
+  // via DecompressionStream. Firefox rejects bookmarks with URLs over ~64KB,
+  // which is why the PSL isn't embedded verbatim.
   const BOOKMARKLET_TEMPLATE = `(async()=>{try{
-const P=__PSL__,D=__DOMAIN__,ts=Math.floor(Date.now()/1000).toString(36);
-const rules=P.split('\\n').map(l=>l.split(/\\s/)[0]).filter(l=>l&&!l.startsWith('//'));
+const B=__PSL__,D=__DOMAIN__,ts=Math.floor(Date.now()/1000).toString(36);
+const bin=atob(B),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+const rules=(await new Response(new Blob([arr]).stream().pipeThrough(new DecompressionStream('gzip'))).text()).split('\\n');
 const lbl=location.hostname.toLowerCase().split('.');
 let n=1;
 for(const r of rules){const e=r[0]==='!',rl=(e?r.slice(1):r).split('.');if(rl.length>lbl.length)continue;let m=1;for(let i=0;i<rl.length;i++){const a=rl[rl.length-1-i],b=lbl[lbl.length-1-i];if(a!=='*'&&a!==b){m=0;break;}}if(!m)continue;if(e){n=rl.length-1;break;}if(rl.length>n)n=rl.length;}
 const reg=n>=lbl.length?location.hostname:lbl.slice(-(n+1)).join('.');
-const addr=reg+'-'+ts+'@'+D;
-await navigator.clipboard.writeText(addr);
+await navigator.clipboard.writeText(reg+'-'+ts+'@'+D);
 }catch(e){alert('bookmarklet error: '+e.message);}})()`;
 
-  function buildBookmarklet(pslText, emailDomain) {
+  function buildBookmarklet(pslB64, emailDomain) {
     const src = BOOKMARKLET_TEMPLATE
-      .replace('__PSL__', JSON.stringify(pslText))
+      .replace('__PSL__', JSON.stringify(pslB64))
       .replace('__DOMAIN__', JSON.stringify(emailDomain));
     return 'javascript:' + encodeURIComponent(src);
   }
@@ -132,19 +147,19 @@ await navigator.clipboard.writeText(addr);
 
   function refresh() {
     const domain = getDomain();
-    const ready = pslText && validDomain(domain);
+    const ready = pslCompressedB64 && validDomain(domain);
     copyBtn.disabled = !ready;
     bookmarkletLink.setAttribute('aria-disabled', ready ? 'false' : 'true');
 
     if (!ready) {
       bookmarkletLink.removeAttribute('href');
       previewEl.textContent = domain
-        ? (pslText ? '(enter a valid domain like example.com)' : '(waiting for PSL\u2026)')
+        ? (pslCompressedB64 ? '(enter a valid domain like example.com)' : '(waiting for PSL\u2026)')
         : '(enter your catch-all domain above)';
       return;
     }
 
-    bookmarkletLink.href = buildBookmarklet(pslText, domain);
+    bookmarkletLink.href = buildBookmarklet(pslCompressedB64, domain);
     const here = registrable(location.hostname, pslRules);
     const ts = Math.floor(Date.now() / 1000).toString(36);
     previewEl.textContent = `${here}-${ts}@${domain}`;
@@ -152,8 +167,8 @@ await navigator.clipboard.writeText(addr);
 
   async function copyBookmarklet() {
     const domain = getDomain();
-    if (!validDomain(domain) || !pslText) return;
-    const src = buildBookmarklet(pslText, domain);
+    if (!validDomain(domain) || !pslCompressedB64) return;
+    const src = buildBookmarklet(pslCompressedB64, domain);
     try {
       await navigator.clipboard.writeText(src);
       flash(statusEl, `copied (${formatBytes(src.length)}) to clipboard.`, 'ok');
