@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>catch-all email bookmarklet</title>
+<meta name="description" content="Generate a bookmarklet that creates timestamped email addresses for your catch-all domain, with domains normalized via the Public Suffix List.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>catch-all email bookmarklet</h1>
+    <p class="tagline">one-click timestamped addresses for your catch-all domain. no database, no storage &mdash; the timestamp <em>is</em> the record.</p>
+  </header>
+
+  <section class="card" id="generate">
+    <h2>1. generate</h2>
+    <label for="domain">your catch-all email domain</label>
+    <div class="input-row">
+      <span class="at">@</span>
+      <input id="domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
+    </div>
+    <p class="hint">saved locally in your browser. never sent anywhere.</p>
+
+    <div class="actions">
+      <a id="bookmarklet" class="btn primary" href="#" draggable="true">drag me to your bookmarks bar</a>
+      <button id="copy" class="btn">copy bookmarklet source</button>
+    </div>
+    <p class="status" id="status"></p>
+
+    <details>
+      <summary>preview the email it'll generate from this page</summary>
+      <code id="preview" class="preview"></code>
+    </details>
+  </section>
+
+  <section class="card" id="decode">
+    <h2>2. decode</h2>
+    <p>paste an address you previously generated to recover when it was created.</p>
+    <label for="email-in">email address</label>
+    <input id="email-in" type="text" placeholder="site.com-abc123@example.com" autocomplete="off" spellcheck="false">
+    <div class="decoded" id="decoded" hidden>
+      <dl>
+        <dt>domain</dt><dd id="out-domain"></dd>
+        <dt>created</dt><dd id="out-date"></dd>
+        <dt>relative</dt><dd id="out-rel"></dd>
+      </dl>
+    </div>
+    <p class="status" id="decode-status"></p>
+  </section>
+
+  <section class="card" id="how">
+    <h2>how it works</h2>
+    <ol>
+      <li>the bookmarklet reads <code>location.hostname</code> on whatever site you're on.</li>
+      <li>the full <a href="https://publicsuffix.org/" target="_blank" rel="noopener">Public Suffix List</a> is inlined into the bookmarklet, so <code>accounts.google.com</code> becomes <code>google.com</code> and <code>foo.bar.co.uk</code> becomes <code>bar.co.uk</code> &mdash; without any network requests when you click it.</li>
+      <li>a unix timestamp (in base36) is appended, then the address is copied to your clipboard.</li>
+    </ol>
+    <p class="meta" id="psl-meta">loading PSL&hellip;</p>
+  </section>
+
+  <footer>
+    <p>
+      <a href="https://github.com/UberKitten/catchall-email-bookmarklet" target="_blank" rel="noopener">source</a>
+      &middot; MIT
+      &middot; made by <a href="https://uberkitten.com" target="_blank" rel="noopener">uberkitten</a>
+    </p>
+  </footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
