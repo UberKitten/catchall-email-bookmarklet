@@ -11,7 +11,7 @@
 <main>
   <header>
     <h1>catch-all email bookmarklet</h1>
-    <p class="tagline">one-click timestamped addresses for your catch-all domain. no database, no storage &mdash; the timestamp <em>is</em> the record.</p>
+    <p class="tagline">one-click addresses for your catch-all domain. timestamps encoded in each address to let you track when you generated it.</p>
   </header>
 
   <section class="card" id="generate">
@@ -21,7 +21,7 @@
       <span class="at">@</span>
       <input id="domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
     </div>
-    <p class="hint">saved locally in your browser. never sent anywhere.</p>
+    <p class="hint">saved locally in your browser</p>
 
     <div class="actions">
       <a id="bookmarklet" class="btn primary" href="#" draggable="true">drag me to your bookmarks bar</a>
@@ -35,7 +35,7 @@
 
   <section class="card" id="decode">
     <h2>2. decode</h2>
-    <p>paste an address you previously generated to recover when it was created.</p>
+    <p>paste an address you previously generated to decode when it was created.</p>
     <label for="email-in">email address</label>
     <input id="email-in" type="text" placeholder="site.com-abc123@example.com" autocomplete="off" spellcheck="false">
     <div class="decoded" id="decoded" hidden>
@@ -52,7 +52,7 @@
     <h2>how it works</h2>
     <ol>
       <li>the bookmarklet reads <code>location.hostname</code> on whatever site you're on.</li>
-      <li>the full <a href="https://publicsuffix.org/" target="_blank" rel="noopener">Public Suffix List</a> is inlined into the bookmarklet, so <code>accounts.google.com</code> becomes <code>google.com</code> and <code>foo.bar.co.uk</code> becomes <code>bar.co.uk</code> &mdash; without any network requests when you click it.</li>
+      <li>the full <a href="https://publicsuffix.org/" target="_blank" rel="noopener">Public Suffix List</a> is inlined into the bookmarklet, so <code>accounts.google.com</code> becomes <code>google.com</code> and <code>foo.bar.co.uk</code> becomes <code>bar.co.uk</code>.</li>
       <li>a unix timestamp (in base36) is appended, then the address is copied to your clipboard.</li>
     </ol>
     <p class="meta" id="psl-meta">loading PSL&hellip;</p>
