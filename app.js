@@ -147,22 +147,29 @@ await navigator.clipboard.writeText(reg+'-'+ts+'@'+D);
 
   function refresh() {
     const domain = getDomain();
-    const ready = pslCompressedB64 && validDomain(domain);
+    const hasValidDomain = validDomain(domain);
+    const ready = pslCompressedB64 && hasValidDomain;
+
     copyBtn.disabled = !ready;
     bookmarkletLink.setAttribute('aria-disabled', ready ? 'false' : 'true');
-
-    if (!ready) {
+    if (ready) {
+      bookmarkletLink.href = buildBookmarklet(pslCompressedB64, domain);
+    } else {
       bookmarkletLink.removeAttribute('href');
-      previewEl.textContent = domain
-        ? (pslCompressedB64 ? '(enter a valid domain like example.com)' : '(waiting for PSL\u2026)')
-        : '(enter your catch-all domain above)';
-      return;
     }
 
-    bookmarkletLink.href = buildBookmarklet(pslCompressedB64, domain);
+    if (!pslCompressedB64) {
+      previewEl.textContent = '(waiting for PSL\u2026)';
+      return;
+    }
+    if (domain && !hasValidDomain) {
+      previewEl.textContent = '(enter a valid domain like example.com)';
+      return;
+    }
+    const previewDomain = domain || domainInput.placeholder || 'example.com';
     const here = registrable(location.hostname, pslRules);
     const ts = Math.floor(Date.now() / 1000).toString(36);
-    previewEl.textContent = `${here}-${ts}@${domain}`;
+    previewEl.textContent = `${here}-${ts}@${previewDomain}`;
   }
 
   async function copyBookmarklet() {
