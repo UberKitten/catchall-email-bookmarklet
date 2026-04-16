@@ -187,18 +187,11 @@ input[type="text"]:focus {
 .status.ok { color: var(--ok); }
 .status.err { color: var(--err); }
 
-details {
-  margin-top: 1rem;
-  font-size: 0.85rem;
-}
-
-details summary {
+.preview-label {
+  font-size: 0.8rem;
   color: var(--text-dim);
-  cursor: pointer;
-  user-select: none;
+  margin: 1.25rem 0 0.4rem;
 }
-
-details summary:hover { color: var(--text); }
 
 .preview {
   display: block;
